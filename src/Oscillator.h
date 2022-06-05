@@ -3,14 +3,26 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-class Oscillator : public Generator {
+class Oscillator : public Box {
 public:
-	enum class OscType { Sine, Saw };
+	enum class OscType { Sine, Saw, RevSaw };
 
-	Oscillator() : mOscType(OscType::Sine), mAmp(0.5f), mTheta(0.0f), mFreq(200.0f), Generator("Oscillator") {}
+	Oscillator() : mOscType(OscType::Sine), mAmp(0.5f), mTheta(0.0f), mFreq(200.0f), 
+		Box("Oscillator"), mOut(TS_BUFFERSIZE), mpAmpIn(nullptr), mpFreqIn(nullptr) {}
 
 	virtual void process() override {
-		if (mOut.space() > 64) {
+		const auto allReady = [&]() {
+			bool ret = true;
+			if (mpAmpIn) {
+				ret &= mpAmpIn->size() >= 64;
+			}
+			if (mpFreqIn) {
+				ret &= mpFreqIn->size() >= 64;
+			}
+			return ret;
+		};
+
+		if (mOut.space() > 64 && allReady()) {
 			for (size_t i = 0; i < 64; ++i) {
 				mOut.push(getNext());
 			}
@@ -21,6 +33,11 @@ public:
 	void setAmp(float f) { mAmp = f; }
 	void setType(OscType type) { mOscType = type; mTheta = 0.0f; }
 
+	TSBuffer* getOutput() { return &mOut; }
+
+	void setFreqMod(TSBuffer* pFreqMod) { mpFreqIn = pFreqMod; }
+	void setAmpMod(TSBuffer* pAmpMod) { mpAmpIn = pAmpMod; }
+
 	float getNext() {
 		float ret = 0.0f;
 		switch (mOscType) {
@@ -30,8 +47,16 @@ public:
 		case OscType::Saw:
 			ret = mTheta;
 			break;
+		case OscType::RevSaw:
+			ret = 1 - mTheta;
+			break;
 		default:
 			ret = 0;
+		}
+		if (mpAmpIn) {
+			float f;
+			mpAmpIn->pull(f);
+			ret *= f;
 		}
 		ret *= mAmp;
 		step(mTheta);
@@ -48,7 +73,11 @@ public:
 
 private:
 	void step(float& theta) {
-		mTheta += TS_TIMESTEP * mFreq;
+		float f = 0.0f;
+		if (mpFreqIn) {
+			mpFreqIn->pull(f);
+		}
+		mTheta += TS_TIMESTEP * (mFreq + f);
 		if (mTheta > 1.0f) {
 			mTheta = fmodf(mTheta, 1.0f);
 		}
@@ -58,4 +87,9 @@ private:
 	float mAmp;
 	float mFreq;
 	OscType mOscType;
+
+	TSBuffer mOut;
+	
+	TSBuffer* mpFreqIn;
+	TSBuffer* mpAmpIn;
 };

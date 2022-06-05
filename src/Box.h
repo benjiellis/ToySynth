@@ -5,26 +5,19 @@
 #include "Buffer.h"
 #include "TSUtilities.h"
 
-class IBox {
-public:
-	virtual void start() = 0;
-	virtual void stop() = 0;
-private:
-};
-
-class Box : public IBox {
+class Box {
 public:
 	Box() : mRunning(false), mName("") {}
 	Box(const std::string& name) : mName(name) {}
 
-	virtual void start() override {
+	void start() {
 		setup();
 		mRunning = true;
 		mThread = std::thread(&Box::run, this);
 		mThread.detach();
 		log(mName + " started.");
 	}
-	virtual void stop() override {
+	void stop() {
 		mRunning = false;
 		teardown();
 		log(mName + " stopped.");
@@ -44,13 +37,4 @@ private:
 	std::thread mThread;
 	std::atomic<bool> mRunning;
 	std::string mName;
-};
-
-class Generator : public Box {
-public:
-	Generator() {}
-	Generator(const std::string& name) : Box(name), mOut(TS_BUFFERSIZE) {}
-	TSBuffer* getOutput() { return &mOut; }
-protected:
-	TSBuffer mOut;
 };

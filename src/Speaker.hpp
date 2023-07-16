@@ -25,7 +25,6 @@ private:
 	void startStream();
 	void stopStream();
 	TSBuffer mBuff;
-	std::vector<TSBuffer*> mpIns;
 	float mVol;
 	PaStream* mAudioStream;
 	PaStreamParameters mOutputParams;

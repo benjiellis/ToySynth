@@ -3,40 +3,34 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
+enum class OscType { Sine, Saw, RevSaw };
+
 class Oscillator : public Box {
 public:
-	enum class OscType { Sine, Saw, RevSaw };
 
 	Oscillator() : mOscType(OscType::Sine), mAmp(0.5f), mTheta(0.0f), mFreq(200.0f), 
-		Box("Oscillator"), mOut(TS_BUFFERSIZE), mpAmpIn(nullptr), mpFreqIn(nullptr) {}
+		Box("Oscillator"), mOut(TS_BUFFERSIZE) {
+		
+		mpIns.resize(2, nullptr);
+		
+	}
 
 	virtual void process() override {
-		const auto allReady = [&]() {
-			bool ret = true;
-			if (mpAmpIn) {
-				ret &= mpAmpIn->size() >= 64;
-			}
-			if (mpFreqIn) {
-				ret &= mpFreqIn->size() >= 64;
-			}
-			return ret;
-		};
-
-		if (mOut.space() > 64 && allReady()) {
-			for (size_t i = 0; i < 64; ++i) {
+		if (mOut.space() > TS_FRAMESIZE && allReady()) {
+			for (size_t i = 0; i < TS_FRAMESIZE; ++i) {
 				mOut.push(getNext());
 			}
 		}
 	}
-
+	
 	void setFreq(float f) { mFreq = f; }
 	void setAmp(float f) { mAmp = f; }
 	void setType(OscType type) { mOscType = type; mTheta = 0.0f; }
 
 	TSBuffer* getOutput() { return &mOut; }
 
-	void setFreqMod(TSBuffer* pFreqMod) { mpFreqIn = pFreqMod; }
-	void setAmpMod(TSBuffer* pAmpMod) { mpAmpIn = pAmpMod; }
+	void setAmpMod(TSBuffer* pAmpMod) { mpIns[0] = pAmpMod; }
+	void setFreqMod(TSBuffer* pFreqMod) { mpIns[1] = pFreqMod; }
 
 	float getNext() {
 		float ret = 0.0f;
@@ -53,9 +47,9 @@ public:
 		default:
 			ret = 0;
 		}
-		if (mpAmpIn) {
+		if (getAmpIn()) {
 			float f;
-			mpAmpIn->pull(f);
+			getAmpIn()->pull(f);
 			ret *= f;
 		}
 		ret *= mAmp;
@@ -63,19 +57,11 @@ public:
 		return ret;
 	}
 
-	void getFullBuffer(TSBuffer& buff, size_t nSecs) {
-		size_t samples = nSecs * TS_SAMPLERATE;
-		buff.resize(samples);
-		for (size_t i = 0; i < buff.size(); ++i) {
-			buff.push(getNext());
-		}
-	}
-
 private:
 	void step(float& theta) {
 		float f = 0.0f;
-		if (mpFreqIn) {
-			mpFreqIn->pull(f);
+		if (getFreqIn()) {
+			getFreqIn()->pull(f);
 		}
 		mTheta += TS_TIMESTEP * (mFreq + f);
 		if (mTheta > 1.0f) {
@@ -83,13 +69,13 @@ private:
 		}
 	}
 
+	TSBuffer* getAmpIn() { return mpIns[0]; }
+	TSBuffer* getFreqIn() { return mpIns[1]; }
+
 	float mTheta;
 	float mAmp;
 	float mFreq;
 	OscType mOscType;
 
 	TSBuffer mOut;
-	
-	TSBuffer* mpFreqIn;
-	TSBuffer* mpAmpIn;
 };

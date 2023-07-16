@@ -19,7 +19,7 @@ void Speaker::startStream() {
 
 	err = Pa_OpenStream(&mAudioStream,
 		nullptr, &mOutputParams,
-		TS_SAMPLERATE, TS_FRAMESPERBUFFER, paClipOff,
+		TS_SAMPLERATE, TS_FRAMESIZE, paClipOff,
 		callback, &mBuff);
 
 	if (err != paNoError) {
@@ -48,16 +48,6 @@ void Speaker::process() {
 		mStarted = false;
 		stopStream();
 	}
-
-	const auto allReady = [&]()->bool {
-		bool ret = true;
-		for (auto& pIn : mpIns) {
-			if (pIn) {
-				ret &= (!pIn->empty());
-			}
-		}
-		return ret;
-	};
 
 	while (allReady() && mBuff.size() < TSSPEAKER_BUFFERSIZE) {
 		float sum = 0.0f;

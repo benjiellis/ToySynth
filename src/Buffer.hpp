@@ -3,8 +3,8 @@
 
 static const size_t TS_SAMPLERATE = 22050;
 static const size_t TS_BUFFERSIZE = 128; 
+static const size_t TS_FRAMESIZE = 64;
 static constexpr float TS_TIMESTEP = 1.0f / float(TS_SAMPLERATE);
-static constexpr size_t TS_FRAMESPERBUFFER = TS_BUFFERSIZE;
 
 template <typename T>
 class CircleBuffer {

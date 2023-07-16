@@ -28,6 +28,20 @@ public:
 	virtual void setup() {};
 	virtual void teardown() {};
 
+protected:
+	std::vector<TSBuffer*> mpIns;
+	std::string mName;
+
+	bool allReady() const {
+		bool ret = true;
+		for (auto& pIn : mpIns) {
+			if (pIn) {
+				ret &= pIn->size() >= TS_FRAMESIZE;
+			}
+		}
+		return ret;
+	}
+
 private:
 	void run() {
 		while (mRunning) {
@@ -36,5 +50,4 @@ private:
 	}
 	std::thread mThread;
 	std::atomic<bool> mRunning;
-	std::string mName;
 };
